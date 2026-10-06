@@ -1,6 +1,10 @@
 import { useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
-import "./index.css";
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+} from "pdf-lib";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -12,143 +16,100 @@ function App() {
   const [matches, setMatches] = useState({});
   const [expiryDates, setExpiryDates] = useState({});
   const [language, setLanguage] = useState("en");
+  const [generating, setGenerating] = useState(false);
 
-  // -----------------------------
-  // UI LANGUAGE
-  // -----------------------------
   const text = {
     en: {
-      title: "Tender Package Builder",
-      subtitle:
-        "Prepare, check and generate a complete tender package.",
-      bengali: "বাংলা",
-      english: "English",
-
-      tenderRequirements: "Tender Requirements",
-      loadRequirements:
-        "Load the tender's requirements.json file.",
-      chooseRequirements: "Choose requirements.json",
-      clickLoad:
-        "Click here to load the tender requirements",
-
-      tenderInformation: "Tender Information",
+      title: "Tender Document Package Builder",
+      language: "বাংলা",
+      loadRequirements: "Load requirements.json",
+      tenderDetails: "Tender Details",
       tenderId: "Tender ID",
-      deadline: "Submission Deadline",
       tenderTitle: "Tender Title",
       procuringEntity: "Procuring Entity",
       bidder: "Bidder",
-
-      uploadDocuments: "Upload PDF Documents",
-      uploadDescription:
-        "Upload all PDF files belonging to this tender.",
-      choosePdf: "Choose PDF files",
-      multiplePdf:
-        "You can select multiple PDF files at once",
-
-      files: "files",
-      page: "page",
+      deadline: "Submission Deadline",
+      uploadPdfs: "Upload PDF Documents",
+      choosePdfs: "Choose PDF files",
+      files: "Uploaded Files",
+      noFiles: "No PDF files uploaded yet.",
       pages: "pages",
-      duplicate: "Duplicate file",
+      duplicate: "Duplicate content",
       matched: "Matched",
-      notMatched: "Not matched",
+      unmatched: "Unmatched",
       remove: "Remove",
-
-      documentChecklist: "Document Checklist",
-      checklistDescription:
-        "Match each uploaded PDF to a requirement.",
+      checklist: "Document Checklist",
       autoMatch: "Auto Match Documents",
-      autoMatchDone: "Documents Auto-Matched",
-
-      mandatory: "Mandatory",
-      optional: "Optional",
-      expiryRequired: "Expiry date required",
-      selectPdf: "Select PDF...",
-      alreadyUsed: "ALREADY USED",
-      duplicateUsed: "DUPLICATE ALREADY USED",
-
+      status: "Status",
+      document: "Document",
+      expiryDate: "Expiry Date",
+      selectFile: "Select file",
+      generate: "Generate Package PDF",
+      blockingIssues: "blocking issue(s)",
+      ready: "Ready to generate",
       missing: "Missing",
-      notProvided: "Not provided",
       expiryNeeded: "Expiry date needed",
       expired: "Expired",
+      notProvided: "Not provided",
       ok: "OK",
-
-      autoMatchInfo:
-        "Automatically match PDFs to requirements using their filenames.",
-
-      invalidRequirements:
-        "Invalid requirements.json file.",
+      packageSuccess: "Package PDF generated successfully.",
+      packageError: "Could not generate the package PDF.",
+      fixIssues: "Fix the blocking issues before generating the package.",
+      generating: "Generating package...",
+      required: "Required",
+      optional: "Optional",
+      expiryRequired: "Expiry required",
+      noBlockingIssues: "All required documents are ready.",
     },
 
     bn: {
-      title: "টেন্ডার প্যাকেজ বিল্ডার",
-      subtitle:
-        "সম্পূর্ণ টেন্ডার প্যাকেজ প্রস্তুত, যাচাই এবং তৈরি করুন।",
-      bengali: "English",
-      english: "English",
-
-      tenderRequirements: "টেন্ডারের প্রয়োজনীয়তা",
-      loadRequirements:
-        "টেন্ডারের requirements.json ফাইল লোড করুন।",
-      chooseRequirements: "requirements.json নির্বাচন করুন",
-      clickLoad:
-        "টেন্ডারের প্রয়োজনীয়তা লোড করতে এখানে ক্লিক করুন",
-
-      tenderInformation: "টেন্ডার তথ্য",
+      title: "টেন্ডার ডকুমেন্ট প্যাকেজ বিল্ডার",
+      language: "English",
+      loadRequirements: "requirements.json লোড করুন",
+      tenderDetails: "টেন্ডারের তথ্য",
       tenderId: "টেন্ডার আইডি",
-      deadline: "জমা দেওয়ার শেষ সময়",
       tenderTitle: "টেন্ডারের শিরোনাম",
-      procuringEntity: "ক্রয়কারী প্রতিষ্ঠান",
+      procuringEntity: "প্রকিউরিং এন্টিটি",
       bidder: "বিডার",
-
-      uploadDocuments: "PDF ডকুমেন্ট আপলোড করুন",
-      uploadDescription:
-        "এই টেন্ডারের সব PDF ফাইল আপলোড করুন।",
-      choosePdf: "PDF ফাইল নির্বাচন করুন",
-      multiplePdf:
-        "একসাথে একাধিক PDF ফাইল নির্বাচন করতে পারবেন",
-
-      files: "টি ফাইল",
-      page: "পৃষ্ঠা",
+      deadline: "জমাদানের শেষ তারিখ",
+      uploadPdfs: "PDF ডকুমেন্ট আপলোড",
+      choosePdfs: "PDF ফাইল নির্বাচন করুন",
+      files: "আপলোড করা ফাইল",
+      noFiles: "এখনও কোনো PDF আপলোড করা হয়নি।",
       pages: "পৃষ্ঠা",
-      duplicate: "ডুপ্লিকেট ফাইল",
-      matched: "ম্যাচ হয়েছে",
-      notMatched: "ম্যাচ হয়নি",
-      remove: "মুছুন",
-
-      documentChecklist: "ডকুমেন্ট চেকলিস্ট",
-      checklistDescription:
-        "প্রতিটি PDF-কে একটি প্রয়োজনীয় ডকুমেন্টের সাথে মিলান।",
-      autoMatch: "ডকুমেন্ট অটো ম্যাচ করুন",
-      autoMatchDone: "ডকুমেন্ট অটো-ম্যাচ হয়েছে",
-
-      mandatory: "আবশ্যিক",
-      optional: "ঐচ্ছিক",
-      expiryRequired: "মেয়াদ শেষের তারিখ প্রয়োজন",
-      selectPdf: "PDF নির্বাচন করুন...",
-      alreadyUsed: "ইতিমধ্যে ব্যবহৃত",
-      duplicateUsed: "ডুপ্লিকেট ইতিমধ্যে ব্যবহৃত",
-
+      duplicate: "একই কনটেন্ট",
+      matched: "ম্যাচ করা হয়েছে",
+      unmatched: "ম্যাচ করা হয়নি",
+      remove: "মুছে ফেলুন",
+      checklist: "ডকুমেন্ট চেকলিস্ট",
+      autoMatch: "অটো ম্যাচ করুন",
+      status: "স্ট্যাটাস",
+      document: "ডকুমেন্ট",
+      expiryDate: "মেয়াদ শেষের তারিখ",
+      selectFile: "ফাইল নির্বাচন করুন",
+      generate: "প্যাকেজ PDF তৈরি করুন",
+      blockingIssues: "টি সমস্যা রয়েছে",
+      ready: "তৈরি করার জন্য প্রস্তুত",
       missing: "অনুপস্থিত",
-      notProvided: "দেওয়া হয়নি",
-      expiryNeeded: "মেয়াদ শেষের তারিখ প্রয়োজন",
-      expired: "মেয়াদ শেষ",
+      expiryNeeded: "মেয়াদ শেষের তারিখ প্রয়োজন",
+      expired: "মেয়াদ শেষ",
+      notProvided: "দেওয়া হয়নি",
       ok: "ঠিক আছে",
-
-      autoMatchInfo:
-        "ফাইলের নাম ব্যবহার করে PDF-কে স্বয়ংক্রিয়ভাবে প্রয়োজনীয় ডকুমেন্টের সাথে মিলানো হবে।",
-
-      invalidRequirements:
-        "ভুল requirements.json ফাইল।",
+      packageSuccess: "প্যাকেজ PDF সফলভাবে তৈরি হয়েছে।",
+      packageError: "প্যাকেজ PDF তৈরি করা যায়নি।",
+      fixIssues: "প্যাকেজ তৈরি করার আগে সমস্যাগুলো ঠিক করুন।",
+      generating: "প্যাকেজ তৈরি হচ্ছে...",
+      required: "প্রয়োজনীয়",
+      optional: "ঐচ্ছিক",
+      expiryRequired: "মেয়াদ প্রয়োজন",
+      noBlockingIssues: "সব প্রয়োজনীয় ডকুমেন্ট প্রস্তুত।",
     },
   };
 
   const t = text[language];
 
-  // -----------------------------
-  // LOAD REQUIREMENTS.JSON
-  // -----------------------------
   function loadRequirements(event) {
-    const file = event.target.files[0];
+    const file = event.target.files?.[0];
 
     if (!file) return;
 
@@ -158,27 +119,27 @@ function App() {
       try {
         const data = JSON.parse(e.target.result);
 
-        setTender(data.tender);
+        const loadedRequirements = Array.isArray(data.requirements)
+          ? [...data.requirements].sort(
+              (a, b) =>
+                Number(a.order || 0) -
+                Number(b.order || 0)
+            )
+          : [];
 
-        setRequirements(
-          [...data.requirements].sort(
-            (a, b) => a.order - b.order
-          )
-        );
-
+        setTender(data);
+        setRequirements(loadedRequirements);
         setMatches({});
         setExpiryDates({});
-      } catch {
-        alert(t.invalidRequirements);
+      } catch (error) {
+        console.error(error);
+        alert("Invalid requirements.json file.");
       }
     };
 
     reader.readAsText(file);
   }
 
-  // -----------------------------
-  // FILE HASH
-  // -----------------------------
   async function getFileHash(file) {
     const buffer = await file.arrayBuffer();
 
@@ -187,81 +148,57 @@ function App() {
       buffer
     );
 
-    return Array.from(new Uint8Array(hashBuffer))
+    const hashArray = Array.from(
+      new Uint8Array(hashBuffer)
+    );
+
+    return hashArray
       .map((byte) =>
         byte.toString(16).padStart(2, "0")
       )
       .join("");
   }
 
-  // -----------------------------
-  // PDF PAGE COUNT
-  // -----------------------------
   async function getPageCount(file) {
     const buffer = await file.arrayBuffer();
 
     const pdf = await pdfjsLib.getDocument({
-      data: buffer,
+      data: new Uint8Array(buffer),
     }).promise;
 
     return pdf.numPages;
   }
 
-  // -----------------------------
-  // UPLOAD PDF FILES
-  // -----------------------------
   async function handlePdfUpload(event) {
     const selectedFiles = Array.from(
-      event.target.files
+      event.target.files || []
     );
 
-    const validFiles = selectedFiles.filter((file) => {
-      return (
-        file.type === "application/pdf" ||
-        file.name
-          .toLowerCase()
-          .endsWith(".pdf")
-      );
-    });
-
-    const invalidFiles = selectedFiles.filter((file) => {
-      return !(
-        file.type === "application/pdf" ||
-        file.name
-          .toLowerCase()
-          .endsWith(".pdf")
-      );
-    });
-
-    if (invalidFiles.length > 0) {
-      alert(
-        `${invalidFiles.length} non-PDF file(s) were rejected.`
-      );
-    }
+    if (!selectedFiles.length) return;
 
     const newFiles = [];
 
-    for (const file of validFiles) {
+    for (const file of selectedFiles) {
+      if (file.type !== "application/pdf") {
+        alert(`${file.name} is not a PDF file.`);
+        continue;
+      }
+
       try {
         const pages = await getPageCount(file);
         const hash = await getFileHash(file);
 
         newFiles.push({
-          id:
-            Date.now().toString() +
-            Math.random()
-              .toString(36)
-              .slice(2),
+          id: `${Date.now()}-${Math.random()}`,
           file,
           name: file.name,
           size: file.size,
           pages,
           hash,
         });
-      } catch {
-        alert(
-          `${file.name} could not be read as a PDF.`
-        );
+      } catch (error) {
+        console.error(error);
+        alert(`Could not read ${file.name}.`);
       }
     }
 
@@ -273,343 +210,233 @@ function App() {
     event.target.value = "";
   }
 
-  // -----------------------------
-  // DUPLICATE CHECK
-  // -----------------------------
   function isDuplicate(fileId) {
-    const currentFile = files.find(
-      (item) => item.id === fileId
+    const target = files.find(
+      (file) => file.id === fileId
     );
 
-    if (!currentFile) return false;
+    if (!target) return false;
 
     return files.some(
-      (item) =>
-        item.id !== fileId &&
-        item.hash === currentFile.hash
+      (file) =>
+        file.id !== fileId &&
+        file.hash === target.hash
     );
   }
 
-  // -----------------------------
-  // NORMALIZE TEXT
-  // -----------------------------
   function normalizeText(value) {
-    return value
+    return String(value || "")
       .toLowerCase()
       .replace(/\.pdf$/i, "")
-      .replace(/[_\-().]+/g, " ")
+      .replace(/[_\-()[\]{}]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
   }
 
-  // -----------------------------
-  // AUTO MATCH
-  // -----------------------------
   function calculateMatchScore(file, requirement) {
-    const fileName = normalizeText(
-      file.name
-    );
+    const fileName = normalizeText(file.name);
 
     const titleEn = normalizeText(
-      requirement.title_en || ""
+      requirement.title_en
     );
 
     const titleBn = normalizeText(
-      requirement.title_bn || ""
+      requirement.title_bn
     );
-
-    const fileWords = fileName
-      .split(" ")
-      .filter(Boolean);
-
-    const titleWords = [
-      ...titleEn.split(" "),
-      ...titleBn.split(" "),
-    ].filter(Boolean);
 
     let score = 0;
 
-    // Exact title match
-    if (
-      titleEn &&
-      fileName.includes(titleEn)
-    ) {
+    if (titleEn && fileName.includes(titleEn)) {
       score += 100;
     }
 
-    // Individual matching words
-    titleWords.forEach((word) => {
-      if (
-        word.length >= 3 &&
-        fileName.includes(word)
-      ) {
-        score += 10;
-      }
-    });
+    if (titleBn && fileName.includes(titleBn)) {
+      score += 100;
+    }
 
-    // Useful keyword matching
     const keywordGroups = [
-      ["financial", "finance", "financial proposal"],
+      ["financial", "financial proposal", "finance"],
       ["technical", "technical proposal"],
       ["tin", "tin certificate"],
       ["vat", "vat certificate"],
       ["bank", "solvency", "bank solvency"],
-      ["experience", "experience certificate"],
-      ["trade", "license", "licence"],
+      ["experience", "experience certificate", "experience cert"],
+      ["trade", "trade license", "trade licence"],
     ];
 
-    keywordGroups.forEach((group) => {
-      const fileHasKeyword =
-        group.some((word) =>
-          fileName.includes(word)
+    for (const group of keywordGroups) {
+      const fileMatches = group.some(
+        (keyword) => fileName.includes(keyword)
+      );
+
+      const requirementMatches =
+        group.some((keyword) =>
+          titleEn.includes(keyword)
+        ) ||
+        group.some((keyword) =>
+          titleBn.includes(keyword)
         );
 
-      const requirementHasKeyword =
-        group.some(
-          (word) =>
-            titleEn.includes(word) ||
-            titleBn.includes(word)
-        );
+      if (fileMatches && requirementMatches) {
+        score += 50;
+      }
+    }
+
+    const fileWords = fileName.split(" ");
+
+    for (const word of fileWords) {
+      if (word.length < 3) continue;
 
       if (
-        fileHasKeyword &&
-        requirementHasKeyword
+        titleEn.includes(word) ||
+        titleBn.includes(word)
       ) {
-        score += 40;
+        score += 5;
       }
-    });
+    }
 
     return score;
   }
 
   function autoMatchDocuments() {
-    if (
-      files.length === 0 ||
-      requirements.length === 0
-    ) {
+    if (!requirements.length || !files.length) {
       return;
     }
 
     const newMatches = {};
-    const usedFileIds = new Set();
-    const usedRequirementIds = new Set();
+    const usedFiles = new Set();
 
-    const possibleMatches = [];
-
-    files.forEach((file) => {
-      requirements.forEach((req) => {
-        const score =
-          calculateMatchScore(file, req);
-
-        if (score > 0) {
-          possibleMatches.push({
-            file,
-            req,
-            score,
-          });
-        }
-      });
-    });
-
-    possibleMatches.sort(
-      (a, b) => b.score - a.score
+    const sortedRequirements = [...requirements].sort(
+      (a, b) =>
+        Number(a.order || 0) -
+        Number(b.order || 0)
     );
 
-    possibleMatches.forEach(
-      ({ file, req, score }) => {
-        if (score < 20) return;
+    for (const requirement of sortedRequirements) {
+      let bestFile = null;
+      let bestScore = 0;
 
-        if (usedFileIds.has(file.id))
-          return;
+      for (const file of files) {
+        if (usedFiles.has(file.id)) continue;
 
-        if (
-          usedRequirementIds.has(req.id)
-        )
-          return;
-
-        // Don't use a duplicate copy if
-        // another identical file is already used.
         const duplicateAlreadyUsed =
-          isDuplicate(file.id) &&
-          [...usedFileIds].some(
-            (usedId) => {
-              const usedFile =
-                files.find(
-                  (item) =>
-                    item.id === usedId
-                );
-
-              return (
-                usedFile &&
-                usedFile.hash === file.hash
-              );
-            }
+          files.some(
+            (otherFile) =>
+              otherFile.id !== file.id &&
+              otherFile.hash === file.hash &&
+              usedFiles.has(otherFile.id)
           );
 
-        if (duplicateAlreadyUsed)
-          return;
+        if (duplicateAlreadyUsed) continue;
 
-        newMatches[req.id] = file.id;
-
-        usedFileIds.add(file.id);
-        usedRequirementIds.add(req.id);
-      }
-    );
-
-    setMatches(newMatches);
-
-    // Remove expiry dates for unmatched requirements
-    setExpiryDates((previous) => {
-      const updated = {};
-
-      Object.keys(newMatches).forEach(
-        (reqId) => {
-          if (previous[reqId]) {
-            updated[reqId] =
-              previous[reqId];
-          }
-        }
-      );
-
-      return updated;
-    });
-  }
-
-  // -----------------------------
-  // MATCH FILE
-  // -----------------------------
-  function matchFile(
-    requirementId,
-    fileId
-  ) {
-    if (fileId) {
-      const selectedFile =
-        files.find(
-          (item) =>
-            item.id === fileId
+        const score = calculateMatchScore(
+          file,
+          requirement
         );
 
-      if (selectedFile) {
-        const duplicateAlreadyUsed =
-          isDuplicate(fileId) &&
-          Object.keys(matches).some(
-            (reqId) => {
-              if (
-                reqId === requirementId
-              ) {
-                return false;
-              }
-
-              const matchedFileId =
-                matches[reqId];
-
-              const matchedFile =
-                files.find(
-                  (file) =>
-                    file.id ===
-                    matchedFileId
-                );
-
-              return (
-                matchedFile &&
-                matchedFile.hash ===
-                  selectedFile.hash
-              );
-            }
-          );
-
-        if (duplicateAlreadyUsed) {
-          alert(
-            "This file has the same content as a file already matched to another requirement."
-          );
-
-          return;
+        if (score > bestScore) {
+          bestScore = score;
+          bestFile = file;
         }
+      }
+
+      if (bestFile && bestScore > 0) {
+        newMatches[requirement.id] = bestFile.id;
+        usedFiles.add(bestFile.id);
       }
     }
 
-    setMatches((previous) => {
-      const updated = {
-        ...previous,
-      };
-
-      // Remove selected file from
-      // any previous requirement.
-      Object.keys(updated).forEach(
-        (reqId) => {
-          if (
-            updated[reqId] === fileId
-          ) {
-            delete updated[reqId];
-          }
-        }
-      );
-
-      if (fileId) {
-        updated[requirementId] =
-          fileId;
-      } else {
-        delete updated[
-          requirementId
-        ];
-      }
-
-      return updated;
-    });
-
-    // Remove expiry if document is cleared
-    if (!fileId) {
-      setExpiryDates(
-        (previous) => {
-          const updated = {
-            ...previous,
-          };
-
-          delete updated[
-            requirementId
-          ];
-
-          return updated;
-        }
-      );
-    }
+    setMatches(newMatches);
   }
 
-  // -----------------------------
-  // REMOVE FILE
-  // -----------------------------
+  function matchFile(requirementId, fileId) {
+    if (!fileId) {
+      setMatches((previous) => {
+        const updated = { ...previous };
+        delete updated[requirementId];
+        return updated;
+      });
+
+      setExpiryDates((previous) => {
+        const updated = { ...previous };
+        delete updated[requirementId];
+        return updated;
+      });
+
+      return;
+    }
+
+    const selectedFile = files.find(
+      (file) => file.id === fileId
+    );
+
+    if (!selectedFile) return;
+
+    const alreadyUsedByAnotherRequirement =
+      Object.entries(matches).some(
+        ([reqId, matchedFileId]) =>
+          reqId !== requirementId &&
+          matchedFileId === fileId
+      );
+
+    if (alreadyUsedByAnotherRequirement) {
+      alert(
+        "This file is already matched to another requirement."
+      );
+      return;
+    }
+
+    const duplicateUsedElsewhere =
+      Object.entries(matches).some(
+        ([reqId, matchedFileId]) => {
+          if (reqId === requirementId) return false;
+
+          const otherFile = files.find(
+            (file) => file.id === matchedFileId
+          );
+
+          return (
+            otherFile &&
+            otherFile.hash === selectedFile.hash
+          );
+        }
+      );
+
+    if (duplicateUsedElsewhere) {
+      alert(
+        "An identical copy of this PDF is already matched to another requirement."
+      );
+      return;
+    }
+
+    setMatches((previous) => ({
+      ...previous,
+      [requirementId]: fileId,
+    }));
+  }
+
   function removeFile(fileId) {
     setFiles((previous) =>
       previous.filter(
-        (item) => item.id !== fileId
+        (file) => file.id !== fileId
       )
     );
 
     setMatches((previous) => {
-      const updated = {
-        ...previous,
-      };
+      const updated = { ...previous };
 
-      Object.keys(updated).forEach(
-        (reqId) => {
-          if (
-            updated[reqId] === fileId
-          ) {
-            delete updated[reqId];
-          }
+      for (const requirementId of Object.keys(updated)) {
+        if (updated[requirementId] === fileId) {
+          delete updated[requirementId];
         }
-      );
+      }
 
       return updated;
     });
   }
 
-  // -----------------------------
-  // STATUS
-  // -----------------------------
   function getStatus(requirement) {
-    const fileId =
-      matches[requirement.id];
+    const fileId = matches[requirement.id];
 
     if (!fileId) {
       return requirement.mandatory
@@ -619,18 +446,18 @@ function App() {
 
     if (requirement.has_expiry) {
       const expiryDate =
-        expiryDates[
-          requirement.id
-        ];
+        expiryDates[requirement.id];
 
       if (!expiryDate) {
         return "Expiry date needed";
       }
 
+      const deadlineDate =
+        tender?.submission_deadline?.slice(0, 10);
+
       if (
-        tender &&
-        expiryDate <
-          tender.submission_deadline
+        deadlineDate &&
+        expiryDate < deadlineDate
       ) {
         return "Expired";
       }
@@ -639,532 +466,1159 @@ function App() {
     return "OK";
   }
 
-  // -----------------------------
-  // STATUS CLASS
-  // -----------------------------
   function getStatusClass(status) {
-    if (status === "OK")
-      return "ok";
+    switch (status) {
+      case "OK":
+        return "status-ok";
 
-    if (status === "Not provided")
-      return "not-provided";
+      case "Not provided":
+        return "status-not-provided";
 
-    if (
-      status === "Expiry date needed"
-    )
-      return "expiry-needed";
+      case "Expiry date needed":
+        return "status-expiry";
 
-    if (status === "Expired")
-      return "expired";
+      case "Expired":
+        return "status-expired";
 
-    return "missing";
+      default:
+        return "status-missing";
+    }
   }
 
-  // -----------------------------
-  // DOCUMENT TITLE
-  // -----------------------------
-  function getDocumentTitle(req) {
+  function hasBlockingIssues() {
+    return requirements.some((req) => {
+      const status = getStatus(req);
+
+      return (
+        status === "Missing" ||
+        status === "Expiry date needed" ||
+        status === "Expired"
+      );
+    });
+  }
+
+  function getBlockingRequirements() {
+    return requirements.filter((req) => {
+      const status = getStatus(req);
+
+      return (
+        status === "Missing" ||
+        status === "Expiry date needed" ||
+        status === "Expired"
+      );
+    });
+  }
+
+  function getDocumentTitle(requirement) {
     if (language === "bn") {
       return (
-        req.title_bn ||
-        req.title_en
+        requirement.title_bn ||
+        requirement.title_en ||
+        requirement.id
       );
     }
 
-    return req.title_en;
+    return (
+      requirement.title_en ||
+      requirement.title_bn ||
+      requirement.id
+    );
   }
 
-  // -----------------------------
-  // MAIN UI
-  // -----------------------------
+  function formatDate(value) {
+    if (!value) return "-";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return String(value);
+    }
+
+    return date.toLocaleDateString();
+  }
+
+  async function generatePackage() {
+    if (!tender) {
+      alert(
+        "Please load requirements.json first."
+      );
+      return;
+    }
+
+    if (hasBlockingIssues()) {
+      alert(t.fixIssues);
+      return;
+    }
+
+    setGenerating(true);
+
+    try {
+      const outputPdf =
+        await PDFDocument.create();
+
+      const regularFont =
+        await outputPdf.embedFont(
+          StandardFonts.Helvetica
+        );
+
+      const boldFont =
+        await outputPdf.embedFont(
+          StandardFonts.HelveticaBold
+        );
+
+      const footerHeight = 30;
+
+      const A4_WIDTH = 595.28;
+      const A4_HEIGHT = 841.89;
+
+      const coverPage =
+        outputPdf.addPage([
+          A4_WIDTH,
+          A4_HEIGHT,
+        ]);
+
+      const {
+        width: coverWidth,
+        height: coverHeight,
+      } = coverPage.getSize();
+
+      let y = coverHeight - 70;
+
+      coverPage.drawText(
+        "Tender Document Package",
+        {
+          x: 50,
+          y,
+          size: 22,
+          font: boldFont,
+          color: rgb(
+            0.08,
+            0.15,
+            0.25
+          ),
+        }
+      );
+
+      y -= 45;
+
+      coverPage.drawText(
+        String(tender.tender_id || "-"),
+        {
+          x: 50,
+          y,
+          size: 16,
+          font: boldFont,
+        }
+      );
+
+      y -= 35;
+
+      const tenderTitle =
+        tender.title ||
+        tender.title_en ||
+        tender.tender_title ||
+        "-";
+
+      coverPage.drawText(
+        String(tenderTitle),
+        {
+          x: 50,
+          y,
+          size: 13,
+          font: regularFont,
+          maxWidth: coverWidth - 100,
+        }
+      );
+
+      y -= 45;
+
+      const details = [
+        [
+          "Procuring Entity",
+          tender.procuring_entity ||
+            tender.procuringEntity ||
+            "-",
+        ],
+        [
+          "Bidder",
+          tender.bidder ||
+            tender.bidder_name ||
+            "-",
+        ],
+        [
+          "Submission Deadline",
+          formatDate(
+            tender.submission_deadline
+          ),
+        ],
+        [
+          "Package Made",
+          new Date().toLocaleDateString(),
+        ],
+      ];
+
+      for (const [label, value] of details) {
+        coverPage.drawText(
+          `${label}:`,
+          {
+            x: 50,
+            y,
+            size: 10,
+            font: boldFont,
+          }
+        );
+
+        coverPage.drawText(
+          String(value),
+          {
+            x: 180,
+            y,
+            size: 10,
+            font: regularFont,
+            maxWidth: coverWidth - 230,
+          }
+        );
+
+        y -= 23;
+      }
+
+      y -= 20;
+
+      coverPage.drawText(
+        "Included Documents",
+        {
+          x: 50,
+          y,
+          size: 14,
+          font: boldFont,
+        }
+      );
+
+      y -= 28;
+
+      const includedRequirements =
+        requirements.filter(
+          (requirement) =>
+            matches[requirement.id]
+        );
+
+      for (
+        let index = 0;
+        index < includedRequirements.length;
+        index++
+      ) {
+        const requirement =
+          includedRequirements[index];
+
+        const fileId =
+          matches[requirement.id];
+
+        const file = files.find(
+          (item) => item.id === fileId
+        );
+
+        const line =
+          `${index + 1}. ${getDocumentTitle(
+            requirement
+          )} — ${file?.name || "-"}`;
+
+        if (y < 70) break;
+
+        coverPage.drawText(
+          line,
+          {
+            x: 55,
+            y,
+            size: 9,
+            font: regularFont,
+            maxWidth: coverWidth - 105,
+          }
+        );
+
+        y -= 19;
+      }
+
+      for (const requirement of requirements) {
+        const fileId =
+          matches[requirement.id];
+
+        if (!fileId) continue;
+
+        const matchedFile =
+          files.find(
+            (file) =>
+              file.id === fileId
+          );
+
+        if (!matchedFile) continue;
+
+        const sourceBytes =
+          await matchedFile.file.arrayBuffer();
+
+        const sourcePdf =
+          await PDFDocument.load(
+            sourceBytes
+          );
+
+        const sourcePageCount =
+          sourcePdf.getPageCount();
+
+        for (
+          let pageIndex = 0;
+          pageIndex < sourcePageCount;
+          pageIndex++
+        ) {
+          const sourcePage =
+            sourcePdf.getPage(
+              pageIndex
+            );
+
+          const {
+            width,
+            height,
+          } = sourcePage.getSize();
+
+          const outputPage =
+            outputPdf.addPage([
+              width,
+              height + footerHeight,
+            ]);
+
+          const embeddedPage =
+            await outputPdf.embedPage(
+              sourcePage
+            );
+
+          outputPage.drawPage(
+            embeddedPage,
+            {
+              x: 0,
+              y: footerHeight,
+              width,
+              height,
+            }
+          );
+        }
+      }
+
+      const totalPages =
+        outputPdf.getPageCount();
+
+      const outputPages =
+        outputPdf.getPages();
+
+      outputPages.forEach(
+        (page, index) => {
+          const { width } =
+            page.getSize();
+
+          const footerText =
+            `${tender.tender_id || "Tender"} | Page ${
+              index + 1
+            } of ${totalPages}`;
+
+          const footerSize = 8;
+
+          const footerWidth =
+            regularFont.widthOfTextAtSize(
+              footerText,
+              footerSize
+            );
+
+          page.drawText(
+            footerText,
+            {
+              x:
+                (width -
+                  footerWidth) /
+                2,
+              y: 10,
+              size: footerSize,
+              font: regularFont,
+              color: rgb(
+                0.35,
+                0.35,
+                0.35
+              ),
+            }
+          );
+        }
+      );
+
+      const pdfBytes =
+        await outputPdf.save();
+
+      const blob =
+        new Blob(
+          [pdfBytes],
+          {
+            type: "application/pdf",
+          }
+        );
+
+      const url =
+        URL.createObjectURL(blob);
+
+      const anchor =
+        document.createElement("a");
+
+      anchor.href = url;
+
+      anchor.download =
+        `${
+          tender.tender_id ||
+          "Tender"
+        }_Package.pdf`;
+
+      document.body.appendChild(anchor);
+
+      anchor.click();
+
+      anchor.remove();
+
+      URL.revokeObjectURL(url);
+
+      alert(t.packageSuccess);
+    } catch (error) {
+      console.error(
+        "Package generation error:",
+        error
+      );
+
+      alert(t.packageError);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  const blockingRequirements =
+    getBlockingRequirements();
+
+  const blockingCount =
+    blockingRequirements.length;
+
   return (
     <div className="app">
 
-      {/* HEADER */}
-      <header className="header">
+      {/* TOP BAR */}
 
-        <div>
-          <h1>{t.title}</h1>
+      <header className="topbar">
 
-          <p>{t.subtitle}</p>
+        <div className="brand">
+
+          <div className="brand-mark">
+            TP
+          </div>
+
+          <div>
+            <div className="brand-name">
+              TENDER PACKAGE
+            </div>
+
+            <div className="brand-subtitle">
+              DOCUMENT BUILDER
+            </div>
+          </div>
+
         </div>
 
-        <button
-          className="language-btn"
-          onClick={() =>
-            setLanguage(
-              language === "en"
-                ? "bn"
-                : "en"
-            )
-          }
-        >
-          {t.bengali}
-        </button>
+        <div className="topbar-right">
+
+          <div className="system-status">
+            <span className="status-dot"></span>
+            BROWSER READY
+          </div>
+
+          <button
+            className="language-btn"
+            onClick={() =>
+              setLanguage(
+                language === "en"
+                  ? "bn"
+                  : "en"
+              )
+            }
+          >
+            {t.language}
+          </button>
+
+        </div>
 
       </header>
 
-      <main>
 
-        {/* REQUIREMENTS */}
-        <section className="card">
+      <main className="workspace">
 
-          <div className="section-title">
+        {/* INTRO */}
+
+        <div className="page-intro">
+
+          <div>
+
+            <div className="eyebrow">
+              AI DEVFEST / PROCUREMENT TOOL
+            </div>
+
+            <h1>
+              Tender Package
+              <br />
+              <span>Builder</span>
+            </h1>
+
+            <p>
+              Assemble, validate and generate a
+              submission-ready document package.
+            </p>
+
+          </div>
+
+          {tender && (
+            <div className="tender-chip">
+
+              <span>TENDER</span>
+
+              <strong>
+                {tender.tender_id || "—"}
+              </strong>
+
+            </div>
+          )}
+
+        </div>
+
+
+        {/* PROGRESS */}
+
+        <section className="setup-strip">
+
+          <div className="setup-step active">
+
+            <span className="step-number">
+              01
+            </span>
 
             <div>
-              <span className="step">
+              <strong>
+                REQUIREMENTS
+              </strong>
+
+              <small>
+                Load tender specification
+              </small>
+            </div>
+
+          </div>
+
+          <div className="setup-line"></div>
+
+          <div
+            className={`setup-step ${
+              files.length ? "active" : ""
+            }`}
+          >
+
+            <span className="step-number">
+              02
+            </span>
+
+            <div>
+              <strong>
+                DOCUMENTS
+              </strong>
+
+              <small>
+                {files.length
+                  ? `${files.length} PDF${
+                      files.length > 1
+                        ? "s"
+                        : ""
+                    } loaded`
+                  : "Upload source PDFs"}
+              </small>
+            </div>
+
+          </div>
+
+          <div className="setup-line"></div>
+
+          <div
+            className={`setup-step ${
+              tender &&
+              requirements.length &&
+              !hasBlockingIssues()
+                ? "active"
+                : ""
+            }`}
+          >
+
+            <span className="step-number">
+              03
+            </span>
+
+            <div>
+              <strong>
+                PACKAGE
+              </strong>
+
+              <small>
+                {hasBlockingIssues()
+                  ? "Validation required"
+                  : "Ready to generate"}
+              </small>
+            </div>
+
+          </div>
+
+        </section>
+
+
+        {/* REQUIREMENTS */}
+
+        <section className="panel">
+
+          <div className="panel-header">
+
+            <div>
+
+              <div className="panel-index">
+                INPUT / 01
+              </div>
+
+              <h2>
+                Tender specification
+              </h2>
+
+              <p>
+                Load the requirements file
+                supplied with the tender.
+              </p>
+
+            </div>
+
+            <label className="file-button">
+
+              <span>+</span>
+
+              {t.loadRequirements}
+
+              <input
+                type="file"
+                accept=".json,application/json"
+                onChange={
+                  loadRequirements
+                }
+              />
+
+            </label>
+
+          </div>
+
+
+          {tender ? (
+            <div className="tender-data">
+
+              <div className="data-cell">
+                <span>TENDER ID</span>
+
+                <strong>
+                  {tender.tender_id || "—"}
+                </strong>
+              </div>
+
+              <div className="data-cell wide">
+                <span>TITLE</span>
+
+                <strong>
+                  {tender.title ||
+                    tender.title_en ||
+                    tender.tender_title ||
+                    "—"}
+                </strong>
+              </div>
+
+              <div className="data-cell">
+                <span>
+                  PROCURING ENTITY
+                </span>
+
+                <strong>
+                  {tender.procuring_entity ||
+                    tender.procuringEntity ||
+                    "—"}
+                </strong>
+              </div>
+
+              <div className="data-cell">
+                <span>BIDDER</span>
+
+                <strong>
+                  {tender.bidder ||
+                    tender.bidder_name ||
+                    "—"}
+                </strong>
+              </div>
+
+              <div className="data-cell">
+                <span>
+                  SUBMISSION DEADLINE
+                </span>
+
+                <strong>
+                  {formatDate(
+                    tender.submission_deadline
+                  )}
+                </strong>
+              </div>
+
+            </div>
+          ) : (
+            <div className="empty-panel">
+
+              <span className="empty-icon">
                 01
               </span>
 
               <div>
-                <h2>
-                  {t.tenderRequirements}
-                </h2>
+                <strong>
+                  No tender loaded
+                </strong>
 
                 <p>
-                  {t.loadRequirements}
+                  Select the requirements.json
+                  file to begin.
                 </p>
               </div>
+
             </div>
-
-          </div>
-
-          <label className="upload-area">
-
-            <input
-              type="file"
-              accept=".json,application/json"
-              onChange={
-                loadRequirements
-              }
-            />
-
-            <div className="upload-icon">
-              ↑
-            </div>
-
-            <strong>
-              {t.chooseRequirements}
-            </strong>
-
-            <span>
-              {t.clickLoad}
-            </span>
-
-          </label>
+          )}
 
         </section>
 
-        {/* TENDER INFORMATION */}
-        {tender && (
-          <section className="card">
 
-            <div className="section-heading">
+        {/* DOCUMENTS */}
 
-              <div>
-                <h2>
-                  {t.tenderInformation}
-                </h2>
-              </div>
+        <section className="panel">
 
-            </div>
-
-            <div className="tender-grid">
-
-              <div>
-                <label>
-                  {t.tenderId}
-                </label>
-
-                <strong>
-                  {tender.tender_id}
-                </strong>
-              </div>
-
-              <div>
-                <label>
-                  {t.deadline}
-                </label>
-
-                <strong>
-                  {
-                    tender.submission_deadline
-                  }
-                </strong>
-              </div>
-
-              <div>
-                <label>
-                  {t.tenderTitle}
-                </label>
-
-                <strong>
-                  {tender.title}
-                </strong>
-              </div>
-
-              <div>
-                <label>
-                  {t.procuringEntity}
-                </label>
-
-                <strong>
-                  {
-                    tender.procuring_entity
-                  }
-                </strong>
-              </div>
-
-              <div>
-                <label>
-                  {t.bidder}
-                </label>
-
-                <strong>
-                  {tender.bidder}
-                </strong>
-              </div>
-
-            </div>
-
-          </section>
-        )}
-
-        {/* PDF UPLOAD */}
-        <section className="card">
-
-          <div className="section-heading">
+          <div className="panel-header">
 
             <div>
+
+              <div className="panel-index">
+                INPUT / 02
+              </div>
+
               <h2>
-                {t.uploadDocuments}
+                Source documents
               </h2>
 
               <p>
-                {t.uploadDescription}
+                Upload the PDFs that belong to
+                this tender package.
               </p>
+
             </div>
 
-            {files.length > 0 && (
-              <span className="count">
-                {files.length} {t.files}
+            <div className="document-count">
+
+              <strong>
+                {String(files.length).padStart(
+                  2,
+                  "0"
+                )}
+              </strong>
+
+              <span>
+                FILES
               </span>
-            )}
+
+            </div>
 
           </div>
 
-          <label className="upload-area">
+
+          <label className="drop-zone">
+
+            <div className="upload-symbol">
+              ↑
+            </div>
+
+            <div>
+
+              <strong>
+                Add PDF documents
+              </strong>
+
+              <p>
+                Click to browse your files
+              </p>
+
+            </div>
+
+            <span className="drop-hint">
+              PDF ONLY
+            </span>
 
             <input
               type="file"
-              accept=".pdf,application/pdf"
+              accept="application/pdf,.pdf"
               multiple
               onChange={
                 handlePdfUpload
               }
             />
 
-            <div className="upload-icon">
-              ↑
-            </div>
-
-            <strong>
-              {t.choosePdf}
-            </strong>
-
-            <span>
-              {t.multiplePdf}
-            </span>
-
           </label>
 
-          {/* FILE LIST */}
+
           {files.length > 0 && (
+            <div className="file-table">
 
-            <div className="file-list">
+              <div className="file-table-head">
 
-              {files.map((item) => {
+                <span>
+                  DOCUMENT
+                </span>
 
-                const matchedRequirement =
-                  Object.keys(
-                    matches
-                  ).find(
-                    (reqId) =>
-                      matches[reqId] ===
-                      item.id
-                  );
+                <span>
+                  PAGES
+                </span>
 
-                const matchedDocument =
-                  requirements.find(
-                    (req) =>
-                      req.id ===
-                      matchedRequirement
-                  );
+                <span>
+                  STATE
+                </span>
 
-                const duplicate =
-                  isDuplicate(
-                    item.id
-                  );
+                <span></span>
 
-                return (
+              </div>
 
-                  <div
-                    className="file-item"
-                    key={item.id}
-                  >
+              {files.map(
+                (file, index) => {
 
-                    <div className="file-info">
+                  const matched =
+                    Object.values(
+                      matches
+                    ).includes(
+                      file.id
+                    );
 
-                      <strong>
-                        {item.name}
-                      </strong>
+                  return (
+                    <div
+                      className="file-row"
+                      key={file.id}
+                    >
 
-                      {duplicate && (
-                        <span className="duplicate-warning">
-                          {t.duplicate}
-                        </span>
-                      )}
+                      <div className="file-name">
 
-                      <span>
-                        {item.pages}{" "}
-                        {item.pages === 1
-                          ? t.page
-                          : t.pages}
-
-                        {" • "}
-
-                        {(
-                          item.size /
-                          1024 /
-                          1024
-                        ).toFixed(2)}
-
-                        {" MB"}
-                      </span>
-
-                    </div>
-
-                    <div className="file-match">
-
-                      {matchedDocument ? (
-                        <span className="matched">
-                          {t.matched}:{" "}
-                          {getDocumentTitle(
-                            matchedDocument
+                        <span className="file-number">
+                          {String(
+                            index + 1
+                          ).padStart(
+                            2,
+                            "0"
                           )}
                         </span>
-                      ) : (
-                        <span className="unmatched">
-                          {t.notMatched}
-                        </span>
-                      )}
+
+                        <div>
+
+                          <strong>
+                            {file.name}
+                          </strong>
+
+                          {isDuplicate(
+                            file.id
+                          ) && (
+                            <small className="duplicate">
+                              DUPLICATE CONTENT
+                            </small>
+                          )}
+
+                        </div>
+
+                      </div>
+
+                      <span className="file-pages">
+                        {file.pages}
+                      </span>
+
+                      <span
+                        className={
+                          matched
+                            ? "file-state matched"
+                            : "file-state"
+                        }
+                      >
+                        {matched
+                          ? "MATCHED"
+                          : "UNASSIGNED"}
+                      </span>
 
                       <button
-                        className="remove-btn"
+                        className="remove-file"
                         onClick={() =>
                           removeFile(
-                            item.id
+                            file.id
                           )
                         }
                       >
-                        {t.remove}
+                        ×
                       </button>
 
                     </div>
-
-                  </div>
-
-                );
-              })}
+                  );
+                }
+              )}
 
             </div>
-
           )}
 
         </section>
 
-        {/* DOCUMENT MATCHING */}
+
+        {/* CHECKLIST */}
+
         {requirements.length > 0 && (
+          <section className="panel checklist-panel">
 
-          <section className="card">
-
-            <div className="section-heading">
+            <div className="checklist-top">
 
               <div>
+
+                <div className="panel-index">
+                  VALIDATION / 03
+                </div>
+
                 <h2>
-                  {t.documentChecklist}
+                  Document checklist
                 </h2>
 
                 <p>
-                  {t.checklistDescription}
+                  Match every requirement to
+                  its corresponding PDF.
                 </p>
+
               </div>
 
-              {files.length > 0 && (
+              <div className="checklist-actions">
+
+                <div
+                  className={
+                    blockingCount === 0
+                      ? "validation ready"
+                      : "validation blocked"
+                  }
+                >
+
+                  <span></span>
+
+                  {blockingCount === 0
+                    ? "PACKAGE READY"
+                    : `${blockingCount} BLOCKING`}
+
+                </div>
+
                 <button
                   className="auto-match-btn"
                   onClick={
                     autoMatchDocuments
                   }
+                  disabled={
+                    files.length === 0
+                  }
                 >
-                  ⚡ {t.autoMatch}
+                  AUTO-MATCH
+                  <span>↗</span>
                 </button>
-              )}
+
+              </div>
 
             </div>
 
-            <p className="auto-match-info">
-              {t.autoMatchInfo}
-            </p>
 
-            <div className="requirements">
+            {/* VALIDATION ALERT */}
+
+            {blockingCount > 0 && (
+              <div className="validation-alert">
+
+                <div className="alert-icon">
+                  !
+                </div>
+
+                <div>
+
+                  <strong>
+                    Package cannot be generated
+                  </strong>
+
+                  <p>
+                    Resolve the following
+                    requirements before export.
+                  </p>
+
+                  <div className="alert-list">
+
+                    {blockingRequirements.map(
+                      (requirement) => (
+                        <span
+                          key={
+                            requirement.id
+                          }
+                        >
+
+                          {getDocumentTitle(
+                            requirement
+                          )}
+
+                          <b>
+                            {getStatus(
+                              requirement
+                            )}
+                          </b>
+
+                        </span>
+                      )
+                    )}
+
+                  </div>
+
+                </div>
+
+              </div>
+            )}
+
+
+            {/* REQUIREMENTS */}
+
+            <div className="requirements-table">
+
+              <div className="requirements-head">
+
+                <span>#</span>
+                <span>REQUIREMENT</span>
+                <span>DOCUMENT</span>
+                <span>EXPIRY</span>
+                <span>STATUS</span>
+
+              </div>
 
               {requirements.map(
-                (req) => {
+                (requirement) => {
 
                   const status =
-                    getStatus(req);
+                    getStatus(
+                      requirement
+                    );
 
-                  const selectedFile =
+                  const selectedFileId =
                     matches[
-                      req.id
-                    ] || "";
+                      requirement.id
+                    ];
 
                   return (
-
                     <div
-                      className="requirement"
-                      key={req.id}
+                      className={`requirement-row ${
+                        status === "OK"
+                          ? "is-ok"
+                          : "is-blocked"
+                      }`}
+                      key={
+                        requirement.id
+                      }
                     >
 
-                      <div className="requirement-number">
-                        {req.order}
-                      </div>
+                      <span className="req-number">
+                        {String(
+                          requirement.order
+                        ).padStart(
+                          2,
+                          "0"
+                        )}
+                      </span>
 
-                      <div className="requirement-info">
+
+                      <div className="req-title">
 
                         <strong>
                           {getDocumentTitle(
-                            req
+                            requirement
                           )}
                         </strong>
 
-                        <span>
-                          {req.mandatory
-                            ? t.mandatory
-                            : t.optional}
+                        <div>
 
-                          {req.has_expiry &&
-                            ` • ${t.expiryRequired}`}
-                        </span>
+                          {requirement.mandatory ? (
+                            <span className="tag required-tag">
+                              REQUIRED
+                            </span>
+                          ) : (
+                            <span className="tag optional-tag">
+                              OPTIONAL
+                            </span>
+                          )}
+
+                          {requirement.has_expiry && (
+                            <span className="tag expiry-tag">
+                              EXPIRY
+                            </span>
+                          )}
+
+                        </div>
 
                       </div>
 
+
                       <select
+                        className="file-select"
                         value={
-                          selectedFile
+                          selectedFileId || ""
                         }
-                        onChange={(e) =>
+                        onChange={(
+                          event
+                        ) =>
                           matchFile(
-                            req.id,
-                            e.target.value
+                            requirement.id,
+                            event.target.value
                           )
                         }
                       >
 
                         <option value="">
-                          {t.selectPdf}
+                          — Select document —
                         </option>
 
                         {files.map(
-                          (item) => {
+                          (file) => {
 
-                            const duplicate =
-                              isDuplicate(
-                                item.id
-                              );
-
-                            const usedByAnotherRequirement =
-                              Object.keys(
+                            const usedByOther =
+                              Object.entries(
                                 matches
                               ).some(
-                                (reqId) =>
+                                ([
+                                  reqId,
+                                  matchedId,
+                                ]) =>
                                   reqId !==
-                                    req.id &&
-                                  matches[
-                                    reqId
-                                  ] ===
-                                    item.id
-                              );
-
-                            const duplicateUsedByAnotherRequirement =
-                              duplicate &&
-                              Object.keys(
-                                matches
-                              ).some(
-                                (reqId) => {
-
-                                  if (
-                                    reqId ===
-                                    req.id
-                                  ) {
-                                    return false;
-                                  }
-
-                                  const matchedFileId =
-                                    matches[
-                                      reqId
-                                    ];
-
-                                  const matchedFile =
-                                    files.find(
-                                      (
-                                        file
-                                      ) =>
-                                        file.id ===
-                                        matchedFileId
-                                    );
-
-                                  return (
-                                    matchedFile &&
-                                    matchedFile.hash ===
-                                      item.hash
-                                  );
-                                }
+                                    requirement.id &&
+                                  matchedId ===
+                                    file.id
                               );
 
                             return (
                               <option
                                 key={
-                                  item.id
+                                  file.id
                                 }
                                 value={
-                                  item.id
+                                  file.id
                                 }
                                 disabled={
-                                  usedByAnotherRequirement ||
-                                  duplicateUsedByAnotherRequirement
+                                  usedByOther
                                 }
                               >
-                                {item.name}
-                                {" "}
-                                (
-                                {
-                                  item.pages
-                                }{" "}
-                                {t.pages}
+                                {file.name}
+                                {isDuplicate(
+                                  file.id
                                 )
-
-                                {duplicate
-                                  ? ` — ${t.duplicate}`
-                                  : ""}
-
-                                {usedByAnotherRequirement
-                                  ? ` — ${t.alreadyUsed}`
-                                  : ""}
-
-                                {duplicateUsedByAnotherRequirement
-                                  ? ` — ${t.duplicateUsed}`
+                                  ? " — duplicate"
                                   : ""}
                               </option>
                             );
@@ -1173,66 +1627,135 @@ function App() {
 
                       </select>
 
-                      {/* EXPIRY DATE */}
-                      {selectedFile &&
-                        req.has_expiry && (
 
+                      <div className="expiry-cell">
+
+                        {requirement.has_expiry &&
+                        selectedFileId ? (
                           <input
                             type="date"
                             value={
                               expiryDates[
-                                req.id
+                                requirement.id
                               ] || ""
                             }
-                            onChange={(e) =>
+                            onChange={(
+                              event
+                            ) =>
                               setExpiryDates(
-                                (
-                                  previous
-                                ) => ({
+                                (previous) => ({
                                   ...previous,
-                                  [req.id]:
-                                    e.target
+                                  [requirement.id]:
+                                    event.target
                                       .value,
                                 })
                               )
                             }
                           />
-
+                        ) : (
+                          <span className="dash">
+                            —
+                          </span>
                         )}
 
-                      <div
-                        className={`status ${getStatusClass(
+                      </div>
+
+
+                      <span
+                        className={`table-status ${getStatusClass(
                           status
                         )}`}
                       >
-                        {status ===
-                        "Missing"
-                          ? t.missing
+
+                        <i></i>
+
+                        {status === "OK"
+                          ? "READY"
                           : status ===
                             "Not provided"
-                          ? t.notProvided
+                          ? "OPTIONAL"
                           : status ===
                             "Expiry date needed"
-                          ? t.expiryNeeded
+                          ? "EXPIRY NEEDED"
                           : status ===
                             "Expired"
-                          ? t.expired
-                          : t.ok}
-                      </div>
+                          ? "EXPIRED"
+                          : "MISSING"}
+
+                      </span>
 
                     </div>
-
                   );
                 }
               )}
 
             </div>
 
-          </section>
 
+            {/* EXPORT */}
+
+            <div className="export-bar">
+
+              <div>
+
+                <span className="export-label">
+                  FINAL OUTPUT
+                </span>
+
+                <strong>
+                  {tender?.tender_id ||
+                    "Tender"}
+                  _Package.pdf
+                </strong>
+
+              </div>
+
+              <button
+                className="generate-btn"
+                disabled={
+                  hasBlockingIssues() ||
+                  generating ||
+                  !tender ||
+                  requirements.length === 0
+                }
+                onClick={
+                  generatePackage
+                }
+              >
+
+                {generating
+                  ? t.generating
+                  : "GENERATE PACKAGE"}
+
+                <span>
+                  →
+                </span>
+
+              </button>
+
+            </div>
+
+          </section>
         )}
 
       </main>
+
+
+      <footer className="app-footer">
+
+        <span>
+          TENDER PACKAGE BUILDER
+        </span>
+
+        <span>
+          AI DEVFEST 2026
+        </span>
+
+        <span>
+          PDF / VALIDATION / EXPORT
+        </span>
+
+      </footer>
 
     </div>
   );
